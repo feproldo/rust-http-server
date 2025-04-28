@@ -19,41 +19,52 @@ pub struct Data {
     pub method: String,
     pub query: String,
     pub stream: TcpStream,
+    pub user_agent: String
 }
 impl Data {
-    pub fn new(method: String, query: String, stream: TcpStream) -> Self {
+    pub fn new(method: String, query: String, stream: TcpStream, user_agent: String) -> Self {
         Self {
             method,
             query,
             stream,
+            user_agent
         }
     }
 }
 
 async fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
-    let buf_reader = BufReader::new(&stream);
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
-    let (method, query) = get_request_info(&http_request);
-    let data = Data::new(method, query, stream);
+    let mut buf_reader = BufReader::new(&stream);
+    let mut request_line = String::new();
+    buf_reader.read_line(&mut request_line)?;
+    let (method, query) = {
+        let mut req = request_line.split_whitespace().into_iter();
+        (req.next().unwrap_or("GET").to_string(), req.next().unwrap_or("/").to_string())
+    };
+    let mut headers = Vec::new();
+    let mut header_line = String::new();
+    
+    loop {
+        buf_reader.read_line(&mut header_line)?;
+        if header_line.trim().is_empty() {
+            break;
+        }
+        headers.push(header_line.trim().to_string());
+    }
+    // let http_request: Vec<_> = buf_reader
+    //     .lines()
+    //     .map(|result| result.unwrap())
+    //     .take_while(|line| !line.is_empty())
+    //     .collect();
+    let user_agent = headers.iter()
+        .find(|h| h.starts_with("User-Agent:"))
+        .map(|h| h.splitn(2, ':').nth(1).unwrap_or("").trim())
+        .unwrap_or("")
+        .to_string();
+    let data = Data::new(method, query, stream, user_agent);
     match data.method.as_str() {
         "GET" => handler::get(data).await,
         "POST" => {}
         _ => {}
     }
-    println!("{:#?}", http_request);
     Ok(())
-}
-
-fn get_request_info(http_request: &Vec<String>) -> (String, String) {
-    let arr: Vec<String> = http_request
-        .get(0)
-        .unwrap()
-        .split(" ")
-        .map(|c| c.to_string())
-        .collect();
-    return (arr.get(0).unwrap().clone(), arr.get(1).unwrap().clone());
 }
