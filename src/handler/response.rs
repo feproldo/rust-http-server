@@ -3,6 +3,7 @@ pub enum ResponseStatus {
     NotFound,
     NoContent,
     InternalServerError,
+    Created,
 }
 
 impl ResponseStatus {
@@ -12,6 +13,7 @@ impl ResponseStatus {
             Self::NotFound => "404 NOT FOUND",
             Self::NoContent => "400 NO CONTENT",
             Self::InternalServerError => "500 INTERNAL SERVER ERROR",
+            Self::Created => "201 CREATED",
         })
     }
 }
