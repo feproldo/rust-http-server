@@ -39,12 +39,16 @@ impl Response {
     pub fn serialize(self) -> String {
         if let Some(content) = self.content {
             let content: String = content.into();
-            return format!(
-                "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
+            format!(
+                "HTTP/1.1 {}\r\n\
+                Content-Type: text/html; charset=utf-8\r\n\
+                Content-Length: {}\r\n\
+                \r\n\
+                {}",
                 self.status.serialize(),
                 content.len(),
                 content
-            );
+            )
         } else {
             return format!("HTTP/1.1 {}\r\n\r\n", self.status.serialize());
         }
